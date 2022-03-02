@@ -14,12 +14,12 @@ contract Task {
         address wallet;
         TaskStatus status;
         uint256 priority;
+        bool deleted;
     }
 
-    TaskStruct[] private tasks;
+    TaskStruct[] internal tasks;
 
-    mapping(address => uint256[]) private myTasks;
-    mapping(uint256 => mapping(address => uint256[])) private myDayTasks;
+    mapping(address => uint256[]) internal myTasks;
 
     event AddTask(
         uint256 dateTimeStampInSeconds,
@@ -48,6 +48,7 @@ contract Task {
 
     modifier onlyValidIndex(uint256 _taskIndex) {
         require(_taskIndex < tasks.length, "not a valid index");
+        require(tasks[_taskIndex].deleted == false, "task deleted");
         _;
     }
 
@@ -67,13 +68,12 @@ contract Task {
             description: _description,
             wallet: msg.sender,
             status: TaskStatus.ToDo,
-            priority: _priority
+            priority: _priority,
+            deleted: false
         });
         tasks.push(_task);
         index = tasks.length - 1;
         myTasks[msg.sender].push(index);
-        uint256 day = _dateTimeStampInSeconds / 1 days;
-        myDayTasks[day][msg.sender].push(index);
 
         emit AddTask(_dateTimeStampInSeconds, _title, _description, _priority);
     }
@@ -91,12 +91,6 @@ contract Task {
         );
         TaskStruct storage task = tasks[_taskIndex];
 
-        uint256 dayFrom = task.date / 1 days;
-        uint256 dayTo = _dateTimeStampInSeconds / 1 days;
-        if (dayFrom != dayTo) {
-            changeMyDayTask(_taskIndex, dayFrom, dayTo);
-        }
-
         task.date = _dateTimeStampInSeconds;
         task.title = _title;
         task.description = _description;
@@ -109,6 +103,10 @@ contract Task {
             _description,
             _priority
         );
+    }
+
+    function removeTask(uint256 _taskIndex) external onlyValidIndex(_taskIndex) onlyOwner(_taskIndex) {
+        tasks[_taskIndex].deleted = true;
     }
 
     function setTaskAsComplete(uint256 _taskIndex)
@@ -143,38 +141,54 @@ contract Task {
         priority = tasks[_taskIndex].priority;
     }
 
-    function listMyTasks() external view returns (uint256[] memory) {
-        return myTasks[msg.sender];
-    }
-
-    function listMyDayTasks() external view returns (uint256[] memory) {
-        uint256 today = block.timestamp / 1 days;
-        return myDayTasks[today][msg.sender];
-    }
-
-    function changeMyDayTask(
-        uint256 _taskIndex,
-        uint256 dayFrom,
-        uint256 dayTo
-    ) internal {
-        uint256 _startIndex;
-        for (uint256 i = 0; i < myDayTasks[dayFrom][msg.sender].length; i++) {
-            if (myDayTasks[dayFrom][msg.sender][i] == _taskIndex) {
-                _startIndex = i;
-                break;
+    function listMyTasks() external view returns (TaskStruct[] memory) {
+        uint256 myTotalTasks = myTasks[msg.sender].length;
+        uint256 totalValid;
+        
+        for (uint i = 0; i < myTotalTasks; i++) {
+            uint256 _taskIndex = myTasks[msg.sender][i];
+            if (!tasks[_taskIndex].deleted) {
+                totalValid++;
             }
         }
 
-        for (
-            uint256 i = _startIndex;
-            i < myDayTasks[dayFrom][msg.sender].length - 1;
-            i++
-        ) {
-            myDayTasks[dayFrom][msg.sender][i] = myDayTasks[dayFrom][
-                msg.sender
-            ][i + 1];
+        TaskStruct[] memory _myTasks = new TaskStruct[](totalValid);
+        uint256 count;
+        for (uint i = 0; i < myTotalTasks; i++) {
+            uint256 _taskIndex = myTasks[msg.sender][i];
+            if (!tasks[_taskIndex].deleted) {
+                _myTasks[count] = tasks[_taskIndex];
+                count++;
+            }
         }
-        myDayTasks[dayFrom][msg.sender].pop();
-        myDayTasks[dayTo][msg.sender].push(_taskIndex);
+
+        return _myTasks;
+    }
+
+    function listMyTodayTasks() external view returns (TaskStruct[] memory) {
+        uint256 today = block.timestamp / 1 days;
+        uint256 myTotalTasks = myTasks[msg.sender].length;
+        uint256 totalValid;
+        
+        for (uint i = 0; i < myTotalTasks; i++) {
+            uint256 _taskIndex = myTasks[msg.sender][i];
+            uint256 taskDay = tasks[_taskIndex].date / 1 days;
+            if (!tasks[_taskIndex].deleted  && taskDay == today) {
+                totalValid++;
+            }
+        }
+
+        TaskStruct[] memory _myTasks = new TaskStruct[](totalValid);
+        uint256 count;
+        for (uint i = 0; i < myTotalTasks; i++) {
+            uint256 _taskIndex = myTasks[msg.sender][i];
+            uint256 taskDay = tasks[_taskIndex].date / 1 days;
+            if (!tasks[_taskIndex].deleted  && taskDay == today) {
+                _myTasks[count] = tasks[_taskIndex];
+                count++;
+            }
+        }
+
+        return _myTasks;
     }
 }

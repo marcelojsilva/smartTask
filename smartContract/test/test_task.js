@@ -40,7 +40,19 @@ describe('Prepare tasks', async() => {
             1
         );
 
+        await task.connect(Bob).addTask(
+            parseInt(Date.now() / 1000 + oneDay),
+            'Title task 3 Bob',
+            'Description task 3 from Bob',
+            1
+        );
+
         describe('Validate Tasks', async() => {
+            it('Remove last task from Bob', async() => {
+                await task.connect(Bob).removeTask(4);
+                await expect(task.getTask(4)).to.be.revertedWith('task deleted');
+            });
+
             it('Check invalid priority', async() => {
                 await expect(task.connect(Alice).addTask(
                     parseInt(Date.now() / 1000),
@@ -62,14 +74,14 @@ describe('Prepare tasks', async() => {
             });
 
             it('Validate total tasks from day of Alice', async() => {
-                AliceTasks = await task.connect(Alice).listMyDayTasks();
+                AliceTasks = await task.connect(Alice).listMyTodayTasks();
                 expect(AliceTasks.length).to.be.equal(1);
             });
 
             it('Validate total tasks at next day of Bob', async() => {
                 await ethers.provider.send('evm_increaseTime', [oneDay]);
                 await ethers.provider.send("evm_mine");
-                BobTasks = await task.connect(Bob).listMyDayTasks();
+                BobTasks = await task.connect(Bob).listMyTodayTasks();
                 expect(BobTasks.length).to.be.equal(2);
             });
 
@@ -125,8 +137,19 @@ describe('Prepare tasks', async() => {
                     1
                 );
                 [date, title, description, wallet, status, priority] =
-                BobTasks = await task.connect(Bob).listMyDayTasks();
+                BobTasks = await task.connect(Bob).listMyTodayTasks();
                 expect(BobTasks.length).to.be.equal(1);
+
+                await task.connect(Bob).editTask(
+                    3,
+                    parseInt(Date.now() / 1000),
+                    'Title task 1 Bob',
+                    'Description task 1 from Bob',
+                    1
+                );
+                [date, title, description, wallet, status, priority] =
+                BobTasks = await task.connect(Bob).listMyTodayTasks();
+                expect(BobTasks.length).to.be.equal(0);
             });
 
             it('Validate set task as complete', async() => {
