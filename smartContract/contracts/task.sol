@@ -157,7 +157,7 @@ contract Task {
         }
 
         TaskStruct[] memory _myTasks = new TaskStruct[](totalValid);
-        uint256 count;
+        uint256 count = 0;
         for (uint256 i = 0; i < myTotalTasks; i++) {
             uint256 taskIndex = myTasks[msg.sender][i];
             if (!tasks[taskIndex].deleted) {
@@ -183,7 +183,7 @@ contract Task {
         }
 
         TaskStruct[] memory _myTasks = new TaskStruct[](totalValid);
-        uint256 count;
+        uint256 count = 0;
         for (uint256 i = 0; i < myTotalTasks; i++) {
             uint256 taskIndex = myTasks[msg.sender][i];
             uint256 taskDay = tasks[taskIndex].date / 1 days;
