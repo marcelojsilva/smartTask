@@ -7,3 +7,10 @@ A simple smart contract for TO Do list
 - Remove task
 - List all tasks
 - List all tasks from day
+
+## install
+cd smartContract/
+npm install
+
+## test
+npx hardhat test
